@@ -8,10 +8,10 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.SearchView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.SearchView;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -22,16 +22,17 @@ import com.android.task.data.repository.ProductsRepository;
 import com.android.task.databinding.FragmentProductsBinding;
 import com.android.task.helpers.VerticalRecyclerViewMargin;
 import com.google.gson.Gson;
-import com.jakewharton.rxbinding4.widget.RxSearchView;
 
 import java.util.concurrent.TimeUnit;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.functions.Function;
 import io.reactivex.rxjava3.schedulers.Schedulers;
+import io.reactivex.rxjava3.subjects.PublishSubject;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -88,6 +89,25 @@ public class ProductsFragment extends Fragment {
         return fragmentBinding.getRoot();
     }
 
+    private Observable<String> observeSearchView(SearchView searchView) {
+        PublishSubject<String> subject = PublishSubject.create();
+
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                return true;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                subject.onNext(newText);
+                return true;
+            }
+        });
+
+        return subject;
+    }
+
     @Override
     public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
@@ -98,7 +118,7 @@ public class ProductsFragment extends Fragment {
 
         SearchView searchView = (SearchView) searchItem.getActionView();
 
-        Disposable queryDisposable = RxSearchView.queryTextChanges(searchView)
+        Disposable queryDisposable = observeSearchView(searchView)
                 .skip(1)
                 .debounce(500, TimeUnit.MILLISECONDS)
                 .map(new Function<CharSequence, String>() {
